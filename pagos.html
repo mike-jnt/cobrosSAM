@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Calendario de Pagos — Recibos — Motocarro (v1.7.1 NATIVE-PRINT)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f172a10;
+    --card:#ffffff;
+    --muted:#6b7280;
+    --accent:#0ea5a4;
+    --accent-2:#2563eb;
+    --paid-bg:#dcfce7;
+    --paid-text:#064e3b;
+    --unpaid-bg:#fee2e2;
+    --unpaid-text:#7f1d1d;
+    --cell-height:62px;
+    --max-width:1200px;
+    --shadow: 0 8px 30px rgba(2,6,23,0.06);
+    --btn-radius:12px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{font-family:Inter, system-ui, Arial, sans-serif; margin:0; background:var(--bg); color:#0f172a; padding:20px; -webkit-font-smoothing:antialiased}
+  .wrap{max-width:var(--max-width); margin:0 auto}
+
+  header.app{display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:18px; flex-wrap:wrap}
+  .title {display:flex; gap:12px; align-items:center}
+  .logo {width:56px; height:56px; background:linear-gradient(135deg,#10b981,#06b6d4); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; letter-spacing:.5px}
+  h1{margin:0; font-size:20px}
+  .subtitle{color:var(--muted); font-size:13px}
+
+  .top-controls {display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  button {border:0; padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:600}
+  button:focus{outline:3px solid rgba(37,99,235,.25); outline-offset:1px}
+  .btn-primary{background:var(--accent-2); color:white}
+  .btn-teal{background:var(--accent); color:white}
+  .btn-danger{background:#ef4444; color:white}
+  .btn-ghost{background:#fff; color:#0f172a; border:1px solid #e6e9ef}
+  .btn-quiet{background:transparent; color:var(--muted); border:1px dashed #d1d5db}
+
+  /* layout */
+  .grid {display:grid; grid-template-columns: 360px 1fr; gap:16px; align-items:start}
+  @media (max-width:980px){ .grid{grid-template-columns:1fr} }
+
+  /* left panel - cliente y acciones */
+  .card{background:var(--card); border-radius:12px; padding:14px; box-shadow:var(--shadow);}
+  .client-form label{display:block; font-size:13px; color:var(--muted); margin-top:8px}
+  .client-form input, .client-form textarea, .client-form select{width:100%; padding:8px 10px; margin-top:6px; border-radius:8px; border:1px solid #e6e9ef; font-size:14px}
+  .small{font-size:13px; color:var(--muted)}
+
+  .actions{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap}
+  .summary-box{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px}
+  .summary-box .card{padding:10px}
+
+  /* months grid */
+  .months-grid{display:flex; flex-wrap:wrap; gap:12px; align-items:flex-start}
+  .month{width:300px; background:var(--card); border-radius:12px; padding:12px; box-shadow:var(--shadow)}
+  .month .title{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-weight:600}
+  .weekday-row{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; font-size:12px; color:var(--muted); margin-bottom:8px; text-align:center}
+  .days{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; grid-auto-rows:var(--cell-height)}
+  .cell{display:flex; align-items:center; justify-content:center; cursor:pointer; border-radius:8px; background:#f8fafc; border:1px solid #e6e9ef; font-weight:700; color:#07133a; user-select:none}
+  .cell.empty{background:transparent; cursor:default; border:0}
+  .cell.paid{background:var(--paid-bg); color:var(--paid-text); border-color:#86efac}
+  .cell.unpaid{background:var(--unpaid-bg); color:var(--unpaid-text); border-color:#fca5a5}
+  .cell:hover{transform:translateY(-1px); transition:transform .12s}
+  .muted-small{font-size:12px; color:var(--muted)}
+
+  /* footer */
+  footer{margin-top:18px; color:#6b7280; font-size:13px}
+
+  /* modal */
+  .modal-backdrop{position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:999; visibility:hidden; opacity:0; transition:.12s}
+  .modal-backdrop.visible{visibility:visible; opacity:1}
+  .modal{width:480px; max-width:95vw; background:#fff; border-radius:12px; padding:18px; box-shadow:0 18px 50px rgba(2,6,23,0.18)}
+  .modal h3{margin:0 0 8px 0}
+  .modal .row{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap}
+
+  /* fancy modal buttons */
+  .fbtn { display:flex; align-items:center; gap:10px; border-radius:var(--btn-radius); padding:10px 12px; font-weight:700; cursor:pointer; border:0; transition:transform .08s ease, box-shadow .12s ease, opacity .12s; box-shadow: 0 6px 18px rgba(2,6,23,0.08); color:#fff; }
+  .fbtn svg{width:18px;height:18px;flex:0 0 18px}
+  .fbtn:focus{outline:3px solid rgba(99,102,241,0.18); outline-offset:2px}
+  .fbtn:active{transform:translateY(1px)}
+  .fbtn--pay{ background: linear-gradient(180deg,#34d399,#059669); box-shadow:0 8px 22px rgba(5,150,105,0.18); }
+  .fbtn--suggest{ background: linear-gradient(180deg,#06b6d4,#0ea5a4); box-shadow:0 8px 22px rgba(6,166,164,0.12); }
+  .fbtn--no{ background: linear-gradient(180deg,#fb7185,#ef4444); box-shadow:0 8px 22px rgba(239,68,68,0.14); }
+  .fbtn--remove{ background: linear-gradient(180deg,#f59e0b,#d97706); box-shadow:0 8px 22px rgba(217,119,6,0.12); }
+  .fbtn--cancel{ background: linear-gradient(180deg,#94a3b8,#6b7280); box-shadow:0 6px 18px rgba(107,114,128,0.08); }
+  .modal-hint{font-size:13px;color:var(--muted); margin-top:8px}
+
+  /* ---------- ESTILOS DE IMPRESIÓN ---------- */
+  @page { size: A4 portrait; margin: 12mm; }
+
+  /* Calendario (Imprimir calendario) */
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-shadow:none !important; text-shadow:none !important; }
+    html, body { background:#fff !important; padding:0 !important; }
+    .modal-backdrop { display:none !important; }
+    /* Calendario por defecto (cuando NO se está imprimiendo recibo/consolidado) */
+    body:not(.printing-receipt):not(.printing-summary) aside { display:none !important; }
+    body:not(.printing-receipt):not(.printing-summary) .months-grid { display:grid !important; grid-template-columns: repeat(2, 1fr) !important; gap:10px !important; }
+    body:not(.printing-receipt):not(.printing-summary) .month { break-inside: avoid !important; page-break-inside: avoid !important; border:1px solid #e5e7eb !important; padding:10px !important; background:#ffffff !important; }
+    body:not(.printing-receipt):not(.printing-summary) header.app .logo { display:none !important; }
+    body:not(.printing-receipt):not(.printing-summary) .top-controls, 
+    body:not(.printing-receipt):not(.printing-summary) #btnCompact { display:none !important; }
+    body:not(.printing-receipt):not(.printing-summary) :root { --cell-height:48px !important; }
+  }
+
+  /* Área exclusiva para documentos (recibo o consolidado) */
+  #printArea { display:none; }
+  .print-doc{ font-family:Arial,Helvetica,sans-serif; color:#08112a; }
+  .print-surface{ max-width:720px; margin:0 auto; }
+  .print-box{ margin:0; border:1px solid #e5e7eb; border-radius:8px; padding:18px; }
+  .print-header{ display:flex; justify-content:space-between; align-items:center; }
+  .print-badge{ background:#2563eb; color:#fff; padding:10px; border-radius:6px; font-weight:700; letter-spacing:.5px }
+  .print-muted{ color:#6b7280 }
+  .print-table{ width:100%; border-collapse:collapse; margin-top:12px }
+  .print-table th,
+  .print-table td{ padding:8px; border:1px solid #eee; text-align:left; font-size:13px; vertical-align:top }
+  .print-table thead th{ background:#f3f4f6 }
+  .right{ text-align:right }
+  .sign-wrap{ margin-top:28px; display:flex; justify-content:space-between; gap:20px }
+  .sign-line{ border-top:1px solid #ddd; padding-top:6px; text-align:center; font-size:12px }
+
+  /* Mostrar sólo el documento cuando se imprime recibo/consolidado */
+  @media print {
+    body.printing-receipt .wrap,
+    body.printing-summary .wrap { display:none !important; }
+    body.printing-receipt #printArea,
+    body.printing-summary #printArea { display:block !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app" role="banner">
+    <div class="title">
+      <div class="logo" aria-hidden="true">MC</div>
+      <div>
+        <h1>Calendario de Pagos — Motocarro</h1>
+        <div class="subtitle">Período objetivo: <strong id="infoPeriod">—</strong> · Último día ajustado: <strong id="infoLastAmount">—</strong></div>
+      </div>
+    </div>
+
+    <div class="top-controls" role="toolbar" aria-label="Acciones principales">
+      <button class="btn-primary" id="btnExportCsv">Exportar CSV</button>
+      <button class="btn-teal" id="btnPrintSummary">Imprimir/Guardar consolidado (PDF)</button>
+      <button class="btn-ghost" id="btnPrintNative">Imprimir calendario</button>
+      <button class="btn-quiet" id="btnResetStorage" title="Limpiar datos guardados">Limpiar datos</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- LEFT: cliente + acciones -->
+    <aside aria-label="Datos del cliente">
+      <div class="card client-form">
+        <h3>Datos del cliente</h3>
+        <label for="clientName">Nombre</label>
+        <input id="clientName" placeholder="Ej. Juan Pérez" />
+
+        <label for="clientDoc">Documento (cédula / NIT)</label>
+        <input id="clientDoc" placeholder="Ej. 12345678" />
+
+        <label for="clientPlate">Placa / Motocarro</label>
+        <input id="clientPlate" placeholder="Ej. MOT-123" />
+
+        <label for="clientPhone">Teléfono</label>
+        <input id="clientPhone" placeholder="Ej. +57 300 000 0000" />
+
+        <label for="clientAddress">Dirección / Observaciones</label>
+        <textarea id="clientAddress" rows="2" placeholder="Dirección o nota breve"></textarea>
+
+        <div class="actions">
+          <button class="btn-teal" id="btnSaveClient">Guardar datos</button>
+          <button class="btn-ghost" id="btnLoadClient">Cargar guardado</button>
+        </div>
+
+        <div class="summary-box">
+          <div class="card">
+            <div class="small muted">Días pagados</div>
+            <div id="totalPaidDaysBig" style="font-weight:700; font-size:18px">0</div>
+          </div>
+          <div class="card">
+            <div class="small muted">Monto pagado</div>
+            <div id="amountPaidBig" style="font-weight:700; font-size:18px">COP 0</div>
+          </div>
+          <div class="card">
+            <div class="small muted">Días no pagados</div>
+            <div id="totalUnpaidBig" style="font-weight:700; font-size:18px">0</div>
+          </div>
+          <div class="card">
+            <div class="small muted">Saldo restante</div>
+            <div id="amountRemainingBig" style="font-weight:700; font-size:18px">COP 23.000.000</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px" class="muted-small">Marca días en el calendario y genera recibos/constancias.</div>
+      </div>
+    </aside>
+
+    <!-- RIGHT: calendario -->
+    <section aria-label="Calendario de pagos">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+        <div class="muted-small">Periodo mostrado: octubre 2025 → agosto 2026 (Agosto completo para marcar días restantes)</div>
+        <div>
+          <button id="btnCompact" class="btn-ghost" aria-pressed="false">Compactar casillas</button>
+          <button id="btnOpenReceiptModal" class="btn-primary">Imprimir/Guardar recibo (selecciona día)</button>
+        </div>
+      </div>
+
+      <div id="monthsGrid" class="months-grid" role="grid" aria-label="Meses y días"></div>
+
+      <footer>Nota: Verde = pagado, Rojo = no pagó. El monto real queda guardado (no visible en la casilla).</footer>
+    </section>
+  </main>
+</div>
+
+<!-- Área de documento para impresión (recibo o consolidado) -->
+<div id="printArea" aria-hidden="true"></div>
+
+<!-- Modal -->
+<div id="modalBackdrop" class="modal-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 id="modalTitle">Marcar día</h3>
+    <div class="muted-small" id="modalDateLabel">--</div>
+    <div class="muted-small" id="modalInfo">--</div>
+
+    <div style="margin-top:10px">
+      <label class="muted-small" for="paymentMethod">Método de pago</label>
+      <select id="paymentMethod" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #e6e9ef">
+        <option value="Efectivo">Efectivo</option>
+        <option value="Transferencia">Transferencia / Depósito</option>
+        <option value="Tarjeta">Tarjeta</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+
+    <div class="row" style="margin-top:12px; gap:10px;">
+      <button id="btnModalMarkPaid" class="fbtn fbtn--pay" title="Marcar como pagado" aria-label="Marcar como pagado">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Marcar Pago</span>
+      </button>
+      <button id="btnModalMarkSuggested" class="fbtn fbtn--suggest" title="Marcar con monto sugerido" aria-label="Marcar pago sugerido">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Pago sugerido</span>
+      </button>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button id="btnModalMarkUnpaid" class="fbtn fbtn--no" title="Marcar como no pagado" aria-label="Marcar como no pagado">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden><path d="M18 6L6 18M6 6l12 12" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>No pagó</span>
+      </button>
+      <button id="btnModalRemoveMark" class="fbtn fbtn--remove" title="Quitar marca" aria-label="Quitar marca">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden><path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Quitar</span>
+      </button>
+      <button id="btnModalCancel" class="fbtn fbtn--cancel" title="Cancelar / cerrar modal" aria-label="Cancelar">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden><path d="M18 6L6 18M6 6l12 12" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Cancelar</span>
+      </button>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <button id="btnGenerateReceipt" class="btn btn-primary" style="background:var(--accent-2); border-radius:10px; padding:10px 14px">Imprimir/Guardar este recibo</button>
+      <button id="btnCloseModal" class="btn btn-ghost" style="border-radius:10px; padding:10px 14px">Cerrar</button>
+    </div>
+    <div class="modal-hint">Este botón abrirá el diálogo de impresión (elige “Guardar como PDF”).</div>
+  </div>
+</div>
+
+<script>
+/* v1.7.1 NATIVE-PRINT
+   - Ahora el RECIBO también muestra “Días no pagados” (marcados como No pagó).
+   - Misma mecánica nativa de impresión para recibo y consolidado que para “Imprimir calendario”.
+*/
+
+(() => {
+  /* CONFIG */
+  const START_DATE = new Date(2025,9,3); // 03/10/2025
+  const FIXED_DAYS = 307;
+  const DAILY_STANDARD = 75000;
+  const TARGET_TOTAL = 23000000;
+  const STORAGE_PAY = 'motocarro_307_23m_payments_v7_1';
+  const STORAGE_CLIENT = 'motocarro_307_23m_client_v7_1';
+  const CURRENCY = new Intl.NumberFormat('es-CO',{ style:'currency', currency:'COP', maximumFractionDigits:0 });
+
+  /* FECHAS e importes */
+  const endDate = new Date(START_DATE.getFullYear(), START_DATE.getMonth(), START_DATE.getDate());
+  endDate.setDate(endDate.getDate() + FIXED_DAYS - 1);
+  const totalBeforeLast = DAILY_STANDARD * (FIXED_DAYS - 1);
+  const lastDayAdjusted = TARGET_TOTAL - totalBeforeLast;
+
+  /* header info */
+  byId('infoPeriod').textContent = `${formatDateLong(START_DATE)} → ${formatDateLong(endDate)} (${FIXED_DAYS} días)`;
+  byId('infoLastAmount').textContent = CURRENCY.format(lastDayAdjusted);
+
+  /* estado */
+  let payments = readJson(STORAGE_PAY) || {};
+  let client = readJson(STORAGE_CLIENT) || {};
+
+  /* DOM */
+  const monthsGrid = byId('monthsGrid');
+  const modalBackdrop = byId('modalBackdrop');
+  const modalDateLabel = byId('modalDateLabel');
+  const modalInfo = byId('modalInfo');
+  const btnModalMarkPaid = byId('btnModalMarkPaid');
+  const btnModalMarkSuggested = byId('btnModalMarkSuggested');
+  const btnModalMarkUnpaid = byId('btnModalMarkUnpaid');
+  const btnModalRemoveMark = byId('btnModalRemoveMark');
+  const btnModalCancel = byId('btnModalCancel');
+  const btnGenerateReceipt = byId('btnGenerateReceipt');
+  const btnCloseModal = byId('btnCloseModal');
+  const btnOpenReceiptModal = byId('btnOpenReceiptModal');
+  const paymentMethodEl = byId('paymentMethod');
+
+  const clientInputs = {
+    name: byId('clientName'),
+    doc: byId('clientDoc'),
+    plate: byId('clientPlate'),
+    phone: byId('clientPhone'),
+    address: byId('clientAddress')
+  };
+  const btnSaveClient = byId('btnSaveClient');
+  const btnLoadClient = byId('btnLoadClient');
+
+  const totalPaidDaysEl = byId('totalPaidDaysBig');
+  const amountPaidEl = byId('amountPaidBig');
+  const totalUnpaidEl = byId('totalUnpaidBig');
+  const amountRemainingEl = byId('amountRemainingBig');
+
+  const btnExportCsv = byId('btnExportCsv');
+  const btnPrintSummary = byId('btnPrintSummary');
+  const btnResetStorage = byId('btnResetStorage');
+  const btnCompact = byId('btnCompact');
+  const btnPrintNative = byId('btnPrintNative');
+
+  const printArea = byId('printArea');
+
+  let activeDate = null;
+  let compact = false;
+  let cleanupScheduled = false;
+
+  /* HELPERS */
+  function byId(id){ return document.getElementById(id); }
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function dateKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+  function formatDateLong(d){ return d.toLocaleDateString('es-CO', { day:'numeric', month:'long', year:'numeric' }); }
+  function formatMonthDay(d){ return d.toLocaleDateString('es-CO', { day:'numeric', month:'long' }); }
+  function formatDateShort(d){ return d.toLocaleDateString('es-CO'); }
+  function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function readJson(key){ try{ const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; }catch(e){ return null; } }
+  function writeJson(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(_){} }
+  function getClient(){
+    return {
+      name: (clientInputs.name?.value || '').trim() || client.name || '',
+      doc:  (clientInputs.doc?.value || '').trim()  || client.doc  || '',
+      plate:(clientInputs.plate?.value || '').trim()|| client.plate|| '',
+      phone:(clientInputs.phone?.value || '').trim()|| client.phone|| '',
+      address:(clientInputs.address?.value || '').trim()|| client.address|| ''
+    };
+  }
+
+  /* months builder */
+  function buildMonthsUntilAug2026(){
+    const months = [];
+    let cursor = new Date(START_DATE.getFullYear(), START_DATE.getMonth(), 1);
+    const lastShow = new Date(2026,7,1); // agosto 2026
+    while (cursor <= lastShow){
+      months.push(new Date(cursor.getFullYear(), cursor.getMonth(), 1));
+      cursor.setMonth(cursor.getMonth()+1);
+      if (months.length>400) break;
+    }
+    return months;
+  }
+  const months = buildMonthsUntilAug2026();
+
+  /* summary + suggested */
+  function computeSummaryAndSuggested(){
+    const lastDisplayed = new Date(2026,7,31);
+    const days = [];
+    const cur = new Date(START_DATE.getFullYear(), START_DATE.getMonth(), START_DATE.getDate());
+    while (cur <= lastDisplayed){
+      days.push(new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()));
+      cur.setDate(cur.getDate()+1);
+    }
+
+    let paidAmount = 0, paidDays = 0, unpaidMarked = 0;
+    for (const d of days){
+      const k = dateKey(d);
+      const p = payments[k];
+      if (p && typeof p.amount === 'number'){ paidAmount += p.amount; paidDays++; }
+      else if (p && p.status === 'unpaid') unpaidMarked++;
+    }
+
+    const remainingToTarget = Math.max(0, TARGET_TOTAL - paidAmount);
+
+    let daysLeft = 0;
+    for (const d of days){
+      const k = dateKey(d);
+      const p = payments[k];
+      if (!(p && typeof p.amount === 'number')) daysLeft++;
+    }
+
+    const suggested = daysLeft > 0 ? Math.ceil(remainingToTarget / daysLeft) : 0;
+    return { paidAmount, paidDays, unpaidMarked, remainingToTarget, daysLeft, suggested, displayedCount: days.length };
+  }
+
+  /* render calendar */
+  function createMonthCard(mDate){
+    const card = document.createElement('div'); card.className='month';
+    const title = document.createElement('div'); title.className='title';
+    title.innerHTML = `<div style="text-transform:capitalize">${mDate.toLocaleString('es-ES',{month:'long', year:'numeric'})}</div>`;
+    card.appendChild(title);
+
+    const weekdayRow = document.createElement('div'); weekdayRow.className='weekday-row';
+    ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].forEach(h=>{ const el=document.createElement('div'); el.textContent=h; weekdayRow.appendChild(el); });
+    card.appendChild(weekdayRow);
+
+    const daysWrap = document.createElement('div'); daysWrap.className='days';
+    const firstDay = new Date(mDate.getFullYear(), mDate.getMonth(), 1);
+    const lastDay = new Date(mDate.getFullYear(), mDate.getMonth()+1, 0);
+    const leading = (firstDay.getDay() + 6) % 7; // Monday=0
+
+    for (let i=0;i<42;i++){
+      const dayNumber = i - leading + 1;
+      if (dayNumber < 1 || dayNumber > lastDay.getDate()){
+        const empty = document.createElement('div'); empty.className='cell empty'; empty.setAttribute('aria-hidden','true'); daysWrap.appendChild(empty); continue;
+      }
+      const date = new Date(mDate.getFullYear(), mDate.getMonth(), dayNumber);
+      const k = dateKey(date);
+      const p = payments[k];
+      const isLast = date.getTime() === endDate.getTime();
+
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.setAttribute('role','button');
+      cell.setAttribute('aria-label',`Día ${dayNumber} de ${mDate.toLocaleString('es-ES',{month:'long', year:'numeric'})}`);
+      if (p && typeof p.amount === 'number') cell.classList.add('paid');
+      if (p && p.status === 'unpaid') cell.classList.add('unpaid');
+
+      const daynum = document.createElement('div'); daynum.textContent = dayNumber;
+      cell.appendChild(daynum);
+
+      let titleText = formatDateLong(date);
+      if (date.getTime() === START_DATE.getTime()) titleText += ' · Inicio';
+      if (isLast) titleText += ' · Fin objetivo';
+      if (p && typeof p.amount === 'number') titleText += ' · Pagado';
+      if (p && p.status === 'unpaid') titleText += ' · No pagó';
+      cell.title = titleText;
+
+      cell.addEventListener('click', ()=> openModalForDay(date));
+      daysWrap.appendChild(cell);
+    }
+
+    card.appendChild(daysWrap);
+    return card;
+  }
+
+  function renderAll(){
+    monthsGrid.innerHTML = '';
+    months.forEach(m => monthsGrid.appendChild(createMonthCard(m)));
+
+    const s = computeSummaryAndSuggested();
+    totalPaidDaysEl.textContent = s.paidDays;
+    amountPaidEl.textContent = CURRENCY.format(s.paidAmount);
+    totalUnpaidEl.textContent = s.unpaidMarked;
+    amountRemainingEl.textContent = CURRENCY.format(s.remainingToTarget);
+  }
+
+  /* MODAL */
+  function openModalForDay(d){
+    activeDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    modalDateLabel.textContent = formatDateLong(activeDate);
+    const s = computeSummaryAndSuggested();
+    modalInfo.textContent = `Falta: ${CURRENCY.format(s.remainingToTarget)} · Días disponibles: ${s.daysLeft} · Sugerido: ${s.suggested>0?CURRENCY.format(s.suggested):'-'}`;
+    paymentMethodEl.value = 'Efectivo';
+    modalBackdrop.classList.add('visible'); modalBackdrop.setAttribute('aria-hidden','false');
+    btnModalMarkPaid.focus();
+  }
+  function closeModal(){
+    modalBackdrop.classList.remove('visible'); modalBackdrop.setAttribute('aria-hidden','true');
+    activeDate=null;
+  }
+
+  /* MARCADO */
+  btnModalMarkPaid.addEventListener('click', ()=>{
+    if (!activeDate) return;
+    const k = dateKey(activeDate);
+    const isLast = activeDate.getTime() === endDate.getTime();
+    payments[k] = { amount: isLast ? lastDayAdjusted : DAILY_STANDARD, method: paymentMethodEl.value || 'Efectivo', ts: Date.now() };
+    savePayments(); closeModal(); renderAll();
+  });
+  btnModalMarkSuggested.addEventListener('click', ()=>{
+    if (!activeDate) return;
+    const s = computeSummaryAndSuggested();
+    const k = dateKey(activeDate);
+    const amount = s.suggested>0 ? s.suggested : (activeDate.getTime()===endDate.getTime() ? lastDayAdjusted : DAILY_STANDARD);
+    payments[k] = { amount, method: paymentMethodEl.value || 'Efectivo', ts: Date.now() };
+    savePayments(); closeModal(); renderAll();
+  });
+  btnModalMarkUnpaid.addEventListener('click', ()=>{
+    if (!activeDate) return;
+    const k = dateKey(activeDate);
+    payments[k] = { status:'unpaid', ts: Date.now() };
+    savePayments(); closeModal(); renderAll();
+  });
+  btnModalRemoveMark.addEventListener('click', ()=>{
+    if (!activeDate) return;
+    const k = dateKey(activeDate);
+    if (payments[k]) delete payments[k];
+    savePayments(); closeModal(); renderAll();
+  });
+  btnModalCancel.addEventListener('click', closeModal);
+  btnCloseModal.addEventListener('click', closeModal);
+
+  /* Abrir modal para seleccionar día (atajo) */
+  btnOpenReceiptModal.addEventListener('click', ()=>{
+    alert('Haz clic en un día del calendario para generar el recibo.');
+  });
+
+  /* ========= IMPRESIÓN NATIVA ========= */
+  function printSurface(inner){
+    printArea.innerHTML = inner;
+    cleanupScheduled = false;
+    const un = ()=>{ if (!cleanupScheduled) { cleanupScheduled = true; setTimeout(cleanAfterPrint, 80); } };
+    window.onafterprint = un;
+    const m = window.matchMedia('print');
+    if (m && m.addEventListener){
+      const handler = (e)=>{ if (!e.matches) un(); };
+      m.addEventListener('change', handler, { once:true });
+    }
+    setTimeout(()=> window.print(), 40);
+  }
+  function cleanAfterPrint(){
+    document.body.classList.remove('printing-receipt','printing-summary');
+    printArea.innerHTML = '';
+    window.onafterprint = null;
+  }
+
+  /* RECIBO */
+  function resolveAmountForReceipt(d, p){
+    if (p && typeof p.amount === 'number') return p.amount;
+    const s = computeSummaryAndSuggested();
+    if (s.suggested > 0) return s.suggested;
+    return (d.getTime()===endDate.getTime()) ? lastDayAdjusted : DAILY_STANDARD;
+  }
+  function buildReceiptForDay(d, p){
+    const amountResolved = resolveAmountForReceipt(d, p);
+    const s = computeSummaryAndSuggested();
+    const alreadyCounted = (p && typeof p.amount === 'number') ? amountResolved : 0;
+    const totalPaidIncludingThis = s.paidAmount + (amountResolved - alreadyCounted);
+    const remaining = Math.max(0, TARGET_TOTAL - totalPaidIncludingThis);
+    return {
+      receiptNo: 'RC-' + Date.now().toString().slice(-8),
+      date: formatDateLong(new Date()),
+      paymentDate: formatDateLong(d),
+      client: getClient(),
+      concept: `Pago diario - ${formatMonthDay(d)}`,
+      amount: amountResolved,
+      method: (p && p.method) ? p.method : (paymentMethodEl.value || '—'),
+      totalPaidSoFar: totalPaidIncludingThis,
+      remaining,
+      unpaidMarked: s.unpaidMarked  // NUEVO: días “No pagó” marcados
+    };
+  }
+  function receiptSurfaceHTML(r){
+    const c = r.client || {};
+    const blockClient = (c.name || c.doc || c.plate || c.phone || c.address) ? `
+      <div><strong>Cliente:</strong> ${escapeHtml(c.name||'')}</div>
+      <div><strong>Documento:</strong> ${escapeHtml(c.doc||'')}</div>
+      <div><strong>Placa:</strong> ${escapeHtml(c.plate||'')}</div>
+      <div><strong>Teléfono:</strong> ${escapeHtml(c.phone||'')}</div>
+      <div><strong>Dirección:</strong> ${escapeHtml(c.address||'')}</div>
+    ` : '';
+    return `
+      <div class="print-doc">
+        <div class="print-surface">
+          <div class="print-box">
+            <div class="print-header">
+              <div>
+                <h1 style="margin:0 0 6px 0; font-size:20px">Recibo de Pago</h1>
+                <div class="print-muted">Recibo Nº: <strong>${r.receiptNo}</strong></div>
+                <div class="print-muted">Emitido: ${r.date}</div>
+              </div>
+              <div class="print-badge">MOTOCARRO</div>
+            </div>
+            <hr style="border:0;border-top:1px solid #eee;margin:10px 0"/>
+            ${blockClient}
+            <div style="margin-top:12px">
+              <div><strong>Concepto:</strong> ${escapeHtml(r.concept)}</div>
+              <div><strong>Fecha de pago:</strong> ${r.paymentDate}</div>
+              <div><strong>Método:</strong> ${escapeHtml(r.method)}</div>
+            </div>
+            <table class="print-table" role="table">
+              <thead><tr><th>Descripción</th><th class="right">Valor</th></tr></thead>
+              <tbody>
+                <tr><td>${escapeHtml(r.concept)}</td><td class="right">${CURRENCY.format(r.amount)}</td></tr>
+                <tr><td><strong>Total recibido</strong></td><td class="right"><strong>${CURRENCY.format(r.amount)}</strong></td></tr>
+              </tbody>
+            </table>
+            <div style="margin-top:10px">
+              <div><strong>Total pagado hasta ahora:</strong> ${CURRENCY.format(r.totalPaidSoFar)}</div>
+              <div><strong>Saldo restante:</strong> ${CURRENCY.format(r.remaining)}</div>
+              <div><strong>Días no pagados:</strong> ${r.unpaidMarked}</div> <!-- NUEVO -->
+            </div>
+            <div class="sign-wrap">
+              <div style="width:45%"><div class="sign-line">Firma cliente</div></div>
+              <div style="width:45%"><div class="sign-line">Firma vendedor / recibí conforme</div></div>
+            </div>
+            <div style="margin-top:12px;color:#6b7280;font-size:12px">Conserve este recibo como comprobante de pago.</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  /* CONSOLIDADO */
+  function buildSummaryData(){
+    const s = computeSummaryAndSuggested();
+    const clientData = getClient();
+    const receiptNo = 'RC-SUM-' + Date.now().toString().slice(-8);
+    const rows = [];
+    const lastDisplayed = new Date(2026,7,31);
+    let cur = new Date(START_DATE.getFullYear(), START_DATE.getMonth(), START_DATE.getDate());
+    while (cur <= lastDisplayed){
+      const k = dateKey(cur);
+      const p = payments[k];
+      rows.push({ date: formatDateShort(cur), state: p ? (typeof p.amount === 'number' ? 'Pagado' : p.status) : 'Sin marcar', amount: p && typeof p.amount === 'number' ? p.amount : 0 });
+      cur.setDate(cur.getDate()+1);
+    }
+    return { receiptNo, date: formatDateLong(new Date()), client: clientData, rows, totals: s };
+  }
+  function consolidatedSurfaceHTML(data){
+    const c = data.client || {};
+    const blockClient = (c.name || c.doc || c.plate || c.phone || c.address) ? `
+      <div><strong>Cliente:</strong> ${escapeHtml(c.name||'')}</div>
+      <div><strong>Documento:</strong> ${escapeHtml(c.doc||'')}</div>
+      <div><strong>Placa:</strong> ${escapeHtml(c.plate||'')}</div>
+      <div><strong>Teléfono:</strong> ${escapeHtml(c.phone||'')}</div>
+      <div><strong>Dirección:</strong> ${escapeHtml(c.address||'')}</div>
+    ` : '';
+    const rows = data.rows.map(r => `<tr><td>${escapeHtml(r.date)}</td><td>${escapeHtml(r.state)}</td><td class="right">${r.amount?CURRENCY.format(r.amount):'-'}</td></tr>`).join('');
+    return `
+      <div class="print-doc">
+        <div class="print-surface">
+          <div class="print-box">
+            <div class="print-header">
+              <div>
+                <h1 style="margin:0 0 6px 0; font-size:20px">Recibo Consolidado</h1>
+                <div class="print-muted">Recibo Nº: <strong>${data.receiptNo}</strong></div>
+                <div class="print-muted">Emitido: ${data.date}</div>
+              </div>
+              <div class="print-badge">MOTOCARRO</div>
+            </div>
+            <hr style="border:0;border-top:1px solid #eee;margin:10px 0"/>
+            ${blockClient}
+            <h3 style="margin:12px 0 4px 0">Detalle de pagos</h3>
+            <table class="print-table"><thead><tr><th>Fecha</th><th>Estado</th><th class="right">Monto</th></tr></thead><tbody>
+              ${rows}
+            </tbody></table>
+            <div style="margin-top:12px">
+              <div><strong>Total pagado:</strong> ${CURRENCY.format(data.totals.paidAmount)}</div>
+              <div><strong>Saldo restante (objetivo ${CURRENCY.format(TARGET_TOTAL)}):</strong> ${CURRENCY.format(data.totals.remainingToTarget)}</div>
+              <div><strong>Días pagados:</strong> ${data.totals.paidDays} · <strong>Días no pagados marcados:</strong> ${data.totals.unpaidMarked}</div>
+            </div>
+            <div style="margin-top:12px;color:#6b7280;font-size:12px">Documento resumen de pagos registrados.</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  /* BOTONES DE IMPRESIÓN */
+  btnGenerateReceipt.addEventListener('click', ()=>{
+    if (!activeDate) { alert('Selecciona un día del calendario antes de imprimir el recibo.'); return; }
+    const k = dateKey(activeDate);
+    const r = buildReceiptForDay(activeDate, payments[k]);
+    document.body.classList.add('printing-receipt');
+    printSurface( receiptSurfaceHTML(r) );
+  });
+
+  btnPrintSummary.addEventListener('click', ()=>{
+    const data = buildSummaryData();
+    document.body.classList.add('printing-summary');
+    printSurface( consolidatedSurfaceHTML(data) );
+  });
+
+  /* CSV */
+  btnExportCsv.addEventListener('click', ()=>{
+    const lastDisplayed = new Date(2026,7,31);
+    const rows = [];
+    let cur = new Date(START_DATE.getFullYear(), START_DATE.getMonth(), START_DATE.getDate());
+    while (cur <= lastDisplayed){
+      const k = dateKey(cur);
+      const p = payments[k];
+      const state = p ? (typeof p.amount === 'number' ? 'Pagado' : p.status) : 'Sin marcar';
+      const amt = p && typeof p.amount === 'number' ? p.amount : '';
+      rows.push([formatDateShort(cur), state, amt]);
+      cur.setDate(cur.getDate()+1);
+    }
+    const header = ['Fecha','Estado','Monto'];
+    const csv = [header, ...rows].map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'pagos_motocarro.csv'; a.click(); URL.revokeObjectURL(url);
+  });
+
+  /* CLIENTE */
+  btnSaveClient.addEventListener('click', ()=>{
+    const c = {
+      name: clientInputs.name.value || '',
+      doc: clientInputs.doc.value || '',
+      plate: clientInputs.plate.value || '',
+      phone: clientInputs.phone.value || '',
+      address: clientInputs.address.value || ''
+    };
+    writeJson(STORAGE_CLIENT, c);
+    client = c;
+    alert('Datos guardados localmente.');
+  });
+  btnLoadClient.addEventListener('click', ()=>{
+    const stored = readJson(STORAGE_CLIENT);
+    if (!stored) return alert('No hay datos guardados.');
+    client = stored;
+    fillClientInputs();
+    alert('Datos cargados.');
+  });
+  function fillClientInputs(){
+    clientInputs.name.value = client.name || '';
+    clientInputs.doc.value = client.doc || '';
+    clientInputs.plate.value = client.plate || '';
+    clientInputs.phone.value = client.phone || '';
+    clientInputs.address.value = client.address || '';
+  }
+  fillClientInputs();
+
+  /* RESET */
+  btnResetStorage.addEventListener('click', ()=>{
+    if (!confirm('¿Borrar pagos y datos guardados?')) return;
+    localStorage.removeItem(STORAGE_PAY);
+    localStorage.removeItem(STORAGE_CLIENT);
+    payments = {}; client = {};
+    fillClientInputs(); renderAll();
+  });
+
+  /* COMPACT */
+  btnCompact.addEventListener('click', (e)=>{
+    compact = !compact;
+    document.documentElement.style.setProperty('--cell-height', compact ? '46px' : '62px');
+    btnCompact.setAttribute('aria-pressed', String(compact));
+    btnCompact.textContent = compact ? 'Expandir casillas' : 'Compactar casillas';
+  });
+
+  /* PRINT CALENDARIO */
+  btnPrintNative.addEventListener('click', ()=>{
+    if (modalBackdrop.classList.contains('visible')) closeModal();
+    window.print();
+  });
+
+  /* SAVE PAYMENTS */
+  function savePayments(){ writeJson(STORAGE_PAY, payments); }
+
+  /* INIT */
+  renderAll();
+
+  /* modal close on backdrop or Esc */
+  modalBackdrop.addEventListener('click',(e)=>{ if (e.target === modalBackdrop) closeModal(); });
+  document.addEventListener('keydown',(e)=>{ if (e.key==='Escape' && modalBackdrop.classList.contains('visible')) closeModal(); });
+
+})();
+</script>
+</body>
+</html>
